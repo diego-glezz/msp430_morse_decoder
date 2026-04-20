@@ -2,15 +2,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define DIT 1200
+#define DIT 5000
 #define DOT_TIME_LIMIT (2* DIT)
 #define LETTER_END_TIME (3 * DIT)
 #define SPACE_ADD_TIME (7 * DIT)
-#define CHAR_COUNT 37
-#define LETTER_COUNT 27
+#define LETTER_COUNT 26
 #define DIGIT_COUNT 10
+#define SCROLL_TEXT_TIME 10000
 
-#define INSTRUCTIONS_SIZE (27 + CHAR_COUNT * 10 + CHAR_COUNT / 4)
+#define INSTRUCTIONS_SIZE 600   
 
 #define pos1 9   /* Digit A1 begins at S18 */
 #define pos2 5   /* Digit A2 begins at S10 */
@@ -18,47 +18,6 @@
 #define pos4 18  /* Digit A4 begins at S36 */
 #define pos5 14  /* Digit A5 begins at S28 */
 #define pos6 7   /* Digit A6 begins at S14 */
-
-const char* morse[CHAR_COUNT] = 
-{
-    ".-",     // A
-    "-...",   // B
-    "-.-.",   // C
-    "-..",    // D
-    ".",      // E
-    "..-.",   // F
-    "--.",    // G
-    "....",   // H
-    "..",     // I
-    ".---",   // J
-    "-.-",    // K
-    ".-..",   // L
-    "--",     // M
-    "-.",     // N
-    "--.--",  // Ñ
-    "---",    // O
-    ".--.",   // P
-    "--.-",   // Q
-    ".-.",    // R
-    "...",    // S
-    "-",      // T
-    "..-",    // U
-    "...-",   // V
-    ".--",    // W
-    "-..-",   // X
-    "-.--",   // Y
-    "--..",   // Z
-    "-----",  // 0
-    ".----",  // 1
-    "..---",  // 2
-    "...--",  // 3
-    "....-",  // 4
-    ".....",  // 5
-    "-....",  // 6
-    "--...",  // 7
-    "---..",  // 8
-    "----."   // 9
-};
 
 const char* morse_letters[LETTER_COUNT] =
 {
@@ -76,7 +35,6 @@ const char* morse_letters[LETTER_COUNT] =
     ".-..",   // L
     "--",     // M
     "-.",     // N
-    "--.--",  // Ñ
     "---",    // O
     ".--.",   // P
     "--.-",   // Q
@@ -105,47 +63,6 @@ const char* morse_digits[DIGIT_COUNT] =
     "----."   // 9
 };
 
-const char toChar[CHAR_COUNT] =
-{
-    'A',
-    'B',
-    'C',
-    'D',
-    'E',
-    'F',
-    'G',
-    'H',
-    'I',
-    'J',
-    'K',
-    'L',
-    'M',
-    'N',
-    'Ñ',
-    'O',
-    'P',
-    'Q',
-    'R',
-    'S',
-    'T',
-    'U',
-    'V',
-    'W',
-    'X',
-    'Y',
-    'Z',
-    '0',
-    '1',
-    '2',
-    '3',
-    '4',
-    '5',
-    '6',
-    '7',
-    '8',
-    '9'
-};
-
 const char letterToChar[LETTER_COUNT] =
 {
     'A',
@@ -162,7 +79,6 @@ const char letterToChar[LETTER_COUNT] =
     'L',
     'M',
     'N',
-    'Ñ',
     'O',
     'P',
     'Q',
@@ -191,9 +107,9 @@ const char digitToChar[DIGIT_COUNT] =
     '9'
 };
 
-volatile int buffer[6] = {0, 1, 2, 3, 4, 5};
+volatile int buffer[6] = {36, 36, 36, 36, 36, 36};
 
-const char alphabetBig[40][2] =
+const char alphabetBig[39][2] =
 {
     {0xEF, 0x00}, /* 0: "A" */
     {0xF1, 0x50}, /* 1: "B" */
@@ -221,51 +137,49 @@ const char alphabetBig[40][2] =
     {0x00, 0xAA}, /* 23: "X" */
     {0x00, 0xB0}, /* 24: "Y" */
     {0x90, 0x28}, /* 25: "Z" */
-    {0x6C, 0xC2}, /* 26: "Ñ" */
-    {0xFC, 0x28}, /* 27: "0" */
-    {0x60, 0x20}, /* 28: "1" */
-    {0xDB, 0x00}, /* 29: "2" */
-    {0xF3, 0x00}, /* 30: "3" */
-    {0x67, 0x00}, /* 31: "4" */
-    {0xB7, 0x00}, /* 32: "5" */
-    {0xBF, 0x00}, /* 33: "6" */
-    {0xE4, 0x00}, /* 34: "7" */
-    {0xFF, 0x00}, /* 35: "8" */
-    {0xF7, 0x00}, /* 36: "9" */
-    {0x00, 0x00}, /* 37: " " (Espacio) */
-    {0x00, 0x50}, /* 38: "|" (Punto) */
-    {0x02, 0x00}  /* 39: "-" (Raya) */
+    {0xFC, 0x28}, /* 26: "0" */
+    {0x60, 0x20}, /* 27: "1" */
+    {0xDB, 0x00}, /* 28: "2" */
+    {0xF3, 0x00}, /* 29: "3" */
+    {0x67, 0x00}, /* 30: "4" */
+    {0xB7, 0x00}, /* 31: "5" */
+    {0xBF, 0x00}, /* 32: "6" */
+    {0xE4, 0x00}, /* 33: "7" */
+    {0xFF, 0x00}, /* 34: "8" */
+    {0xF7, 0x00}, /* 35: "9" */
+    {0x00, 0x00}, /* 36: " " (Espacio) */
+    {0x00, 0x50}, /* 37: "|" (Punto) */
+    {0x02, 0x00}  /* 38: "-" (Raya) */
 };
 
-void init_button_config();
+void init_button_config(void);
 void init_LCD();
 void init_leds();
 void config_ACLK_to_32KHz_crystal();
-void config_reloj_8MHz(void);
-void config_UART_9600(void);
-void init_timer0();
+void init_timer0(void);
 void init_timer1(int limit);
 
-void add_letter();
+int add_letter(void);
 void add_char(char** str, char c);
 void delete_char(char** str);
-void append_char(char* str, char c);
+void append_char(char** str, char c);
 void clean_string(char** str);
 
-void update_LCD();
+void update_LCD(void);
 void show_buffer(volatile int buffer[]);
-//void shift_buffer(volatile int buffer[], int nueva_letra);
-//void displayScrollText(char *msg);
-//void showChar(char c, int position);
 
-int get_char_index(char c);
-void UART_print_char(char c);
-void UART_print_string(char* str);
+int get_lcd_char(char c);
+
+void scrollText(char *msg);
+
+void config_reloj_8MHz(void);
+void config_UART_9600(void);
+void uart_print(char *str);
 char* console_instructions();
 
 
 char* curr_string = NULL;
-char curr_morse[6] = "\0";
+char* curr_morse = NULL;
 
 volatile int state = 0; //0 -> Waiting to start | 1-> Waiting for letter | 2 -> Mid letter
 
@@ -275,11 +189,11 @@ int main(void) {
 
     init_button_config();
     
-    init_LCD();
-    init_leds();
-
     config_reloj_8MHz();
     config_UART_9600();
+
+    init_LCD();
+    init_leds();
     //config_ACLK_to_32KHz_crystal();
 
     show_buffer(buffer);
@@ -287,42 +201,34 @@ int main(void) {
     curr_string = (char*)malloc(sizeof(char));
     (curr_string)[0] = '\0';
 
-    UART_print_string(console_instructions());
+    curr_morse = (char*)malloc(sizeof(char));
+    (curr_morse)[0] = '\0';
+
+
+    uart_print(console_instructions());
 
     __bis_SR_register(LPM0_bits |GIE);
     while (1) {}
 }
-/*
-#pragma vector=TIMER1_A0_VECTOR
-__interrupt void TIMER1_A0_ISR(void) {
-    switch (state) {
-        case 1: //No letter in a while so a space is added
-            add_char((char**)&curr_string, ' ');
-            break;
-        case 2: //No input in a while so the letter ended
-            add_letter();
-            state = 1;  //Waiting to start letter
-            break;
-    }
-    init_timer1(SPACE_ADD_TIME);
-}
-*/
-// SIN ESPACIOS INFINITOS
 
 #pragma vector=TIMER1_A0_VECTOR
 __interrupt void TIMER1_A0_ISR(void) {
     switch (state) {
-        case 1: //No letter in a while so a space is added
-            add_letter();
+        case 1: // No hay letra en un rato asi que se añade un espacio
+            add_char((char**)&curr_string, ' ');
             TA1CTL &= ~MC_3;
             break;
-        case 2: //No input in a while so the letter ended
-            add_letter();
-            state = 1;  //Waiting to start letter
-            init_timer1(SPACE_ADD_TIME);
+        case 2: // No hay input(. o -) en un rato asi que la letra ha terminado
+            if (add_letter() == 1) {
+                init_timer1(SPACE_ADD_TIME);
+                state = 1;
+            }
+            else state = 0;
+            
             break;
     }
 }
+
 
 #pragma vector=PORT1_VECTOR
 __interrupt void ISR_Puerto1(void) {
@@ -340,23 +246,37 @@ __interrupt void ISR_Puerto1(void) {
             unsigned int time = TA0R;
 
             char toAdd = (time <= DOT_TIME_LIMIT) ? '.' : '-';
-            if (strlen(curr_morse) < 5) {
-                add_char((char**)&curr_morse, toAdd);
-            }
-            
+
+            add_char((char**)&curr_morse, toAdd);
+
             P1IES |= BIT1; // Cambia a flanco de bajada
 
             init_timer1(LETTER_END_TIME);
         }
-        P1IFG &= ~BIT1; // Limpia la bandera física del Botón 1
+        
+        P1IFG &= ~BIT1;
     }
 
     if (P1IFG & BIT2) { //Boton 2 -> delete o fin de texto
-        delete_char((char**)&curr_string);
+        if (P1IES & BIT2) { // Boton 2 pulsado
+            P1IES &= ~BIT2; // Cambiar a flanco de subida
+            TB0CTL = TBSSEL__ACLK | TBCLR | MC__CONTINUOUS;
+        }
+        else { // Boton 2 soltado
+            TB0CTL &= ~MC_3;
+            int time = TA0R;
 
-        init_timer1(SPACE_ADD_TIME);
+            if (time < SCROLL_TEXT_TIME) { // Borrar letra
+                delete_char((char**)&curr_string);
+                state = 0;
+                TA1CTL &= ~MC_3;
+            } else {// Scroll del texto
+                scroll_text((char*)curr_string);
+            }
 
-        P1IFG &= ~BIT2; //Limpia la bandera física del Botón 2
+            P1IES |= BIT2;
+        }
+        P1IFG &= ~BIT2;
     }
 }
 
@@ -365,9 +285,13 @@ void init_button_config() {
     P1SEL1 &= ~(BIT1 | BIT2);
     P1DIR &= ~(BIT1 | BIT2);
     P1REN |= (BIT1 | BIT2);
-    P1OUT |= (BIT1 | BIT2); // Pull up
-    P1IES |= (BIT1 | BIT2);
-    P1IE |= (BIT1 | BIT2);  // Habilita la interrupcion de botones
+    P1OUT |= (BIT1 | BIT2); 
+    
+    P1IES |= (BIT1 | BIT2); // 1. Configuras el flanco (esto genera el flag fantasma)
+    
+    P1IFG &= ~(BIT1 | BIT2); // 2. LIMPIAS el flag (apagas el timbre antes de empezar)
+    
+    P1IE |= (BIT1 | BIT2);   // 3. Habilitamos la interrupción
 }
 
 void init_LCD() {
@@ -425,30 +349,6 @@ void config_ACLK_to_32KHz_crystal() {
    CSCTL0_H = 0;
 }
 
-void config_reloj_8MHz(void) {
-    CSCTL0_H = CSKEY >> 8;                    
-    CSCTL1 = DCOFSEL_3 | DCORSEL;             
-    CSCTL2 = SELA__VLOCLK | SELS__DCOCLK | SELM__DCOCLK; 
-    CSCTL3 = DIVA__1 | DIVS__1 | DIVM__1;     
-    CSCTL0_H = 0;                             
-}
-
-void config_UART_9600(void) {
-    P3SEL0 |= (BIT4 | BIT5);                  
-    P3SEL1 &= ~(BIT4 | BIT5);                 
-
-    UCA1CTLW0 = UCSWRST;                      
-    UCA1CTLW0 |= UCSSEL__SMCLK;               
-    
-    UCA1BR0 = 52;                             
-    UCA1BR1 = 0x00;                           
-    UCA1MCTLW |= UCOS16 | UCBRF_1 | 0x4900;   
-
-    UCA1CTLW0 &= ~UCSWRST;
-
-    UCA1IE &= ~(UCRXIE | UCTXIE);
-}
-
 void init_timer0() {
     TA0CTL = TASSEL__ACLK | TACLR;
     TA0CTL |= MC__CONTINUOUS;
@@ -461,46 +361,39 @@ void init_timer1(int limit) {
     TA1CTL |= MC__UP;
 }
 
-void add_letter() {
-    if (curr_morse == NULL) return;
+int add_letter() {
+    if (curr_morse == NULL) return 0;
 
-    char c = '\0';
-    
-    if (strlen(curr_morse) == 0) c = ' ';
-    
+    char letter = '\0';
     int i;
-    /*
-    for (i = CHAR_COUNT - 1; i >= 0; i--) {
-        if (strcmp((char*)curr_morse, morse[i]) == 0) {
-            c = toChar[i];
-            append_char((char**)&curr_string, c);
-            break;
-        }
-    }
-    */
-    for (i = LETTER_COUNT - 1; i >= 0 && c == '\0'; i--) {
+    for (i = LETTER_COUNT - 1; i >= 0 && letter == '\0'; i--) {
         if (strcmp((char*)curr_morse, morse_letters[i]) == 0) {
-            c = letterToChar[i];
+            letter = letterToChar[i];
+            append_char((char**)&curr_string, letter);
             break;
         }
     }
-    for (i = DIGIT_COUNT - 1; i >= 0 && c == '\0'; i--) {
+    for (i = DIGIT_COUNT - 1; i >= 0 && letter == '\0'; i--) {
         if (strcmp((char*)curr_morse, morse_digits[i]) == 0) {
-            c = digitToChar[i];
-            
+            letter = digitToChar[i];
+            append_char((char**)&curr_string, letter);
             break;
         }
     }
 
-    if (c == '\0') {
+    if (letter == '\0') {
         P1OUT |= BIT0;
+        clean_string((char**)&curr_morse);
+        update_LCD();
+        return 0;
     }
     else {
-        append_char((char**)&curr_string, c);
         P1OUT &= ~BIT0;
+        clean_string((char**)&curr_morse);
+        update_LCD();
+        return 1;
     }
-    clean_string((char**)&curr_morse);
-    update_LCD();
+    
 }
 
 void add_char(char** str, char c) {
@@ -523,20 +416,6 @@ void delete_char(char** str) {
     update_LCD();
 }
 
-void append_char(char* str, char c) {
-    unsigned int len = strlen(curr_morse);
-    
-    // Si hay menos de 5 caracteres, añadimos el nuevo y cerramos con nulo
-    if (len < 5) {
-        curr_morse[len] = c;
-        curr_morse[len + 1] = '\0';
-        update_LCD();
-    }
-}
-
-
-
-/*
 void append_char(char** str, char c) {
     if (*str == NULL) {
         *str = (char*)malloc(2 * sizeof(char));
@@ -557,7 +436,6 @@ void append_char(char** str, char c) {
 
     update_LCD();
 }
-*/
 
 void clean_string(char** str) {
     if (*str != NULL) {
@@ -571,11 +449,11 @@ void update_LCD() {
     unsigned int len_morse = 0;
     unsigned int len_str = 0;
 
-    if (curr_morse != NULL) len_morse = strlen((char*)curr_morse);
-    if (curr_string != NULL) len_str = strlen((char*)curr_string);
+    if (curr_morse != NULL) len_morse = (int)strlen((char*)curr_morse);
+    if (curr_string != NULL) len_str = (int)strlen((char*)curr_string);
 
     for (i = 0; i < 6; i++) {
-        buffer[i] = 37;
+        buffer[i] = 36;
     }
     
     int index = 0;
@@ -604,128 +482,85 @@ void show_buffer(volatile int buffer[]) {
     LCDMEM[7]  = alphabetBig[buffer[0]][0];
     LCDMEM[8]  = alphabetBig[buffer[0]][1];
 }
-/*
-void shift_buffer(volatile int buffer[], int nueva_letra) {
-    buffer[5] = buffer[4];
-    buffer[4] = buffer[3];
-    buffer[3] = buffer[2];
-    buffer[2] = buffer[1];
-    buffer[1] = buffer[0];
-    buffer[0] = nueva_letra;
-}
 
-volatile unsigned char mode;
-
-void displayScrollText(char *msg)
-{
-    int length = strlen(msg);
-    int oldmode = mode;
-    int i;
-    int s = 5;
-    char buffer[6] = "      ";
-    for (i=0; i<length+7; i++)
-    {
-        if (mode != oldmode)
-            break;
-        int t;
-        for (t=0; t<6; t++)
-            buffer[t] = ' ';
-        int j;
-        for (j=0; j<length; j++)
-        {
-            if (((s+j) >= 0) && ((s+j) < 6))
-                buffer[s+j] = msg[j];
-        }
-        s--;
-
-        showChar(buffer[0], pos1);
-        showChar(buffer[1], pos2);
-        showChar(buffer[2], pos3);
-        showChar(buffer[3], pos4);
-        showChar(buffer[4], pos5);
-        showChar(buffer[5], pos6);
-
-        __delay_cycles(200000);
-    }
-}
-
-void showChar(char c, int position)
-{
-    if (c == ' ')
-    {
-        // Display space
-        LCDMEM[position] = 0;
-        LCDMEM[position+1] = 0;
-    }
-    else if (c >= '0' && c <= '9')
-    {
-        // Display digit
-        LCDMEM[position] = digit[c-48][0];
-        LCDMEM[position+1] = digit[c-48][1];
-    }
-    else if (c >= 'A' && c <= 'Z')
-    {
-        // Display alphabet
-        LCDMEM[position] = alphabetBig[c-65][0];
-        LCDMEM[position+1] = alphabetBig[c-65][1];
-    }
-    else
-    {
-        // Turn all segments on if character is not a space, digit, or uppercase letter
-        LCDMEM[position] = 0xFF;
-        LCDMEM[position+1] = 0xFF;
-    }
-}
-*/
 int get_char_index(char c) {
     if (c >= 'A' && c <= 'Z') return c - 'A';
-    if (c >= '0' && c <= '9') return c - '0' + 27;
-    if (c == 'Ñ') return 26;
-    if (c == '.') return 38;
-    if (c == '-') return 39;
-    return 37; // Espacio por defecto
+    if (c >= '0' && c <= '9') return c - '0' + 26;
+    if (c == '.') return 37;
+    if (c == '-') return 38;
+    return 36; // Espacio por defecto
 }
 
-void UART_print_char(char c) {
-    while (!(UCA1IFG & UCTXIFG)); 
+void scroll_text(char* str) {
+    if (str == NULL || strlen(str) == 0) return;
     
-    UCA1TXBUF = c;
+    int len = strlen(str);
+    int i, j;
+
+    for (i = 0; i <= len + 5; i++) { 
+        
+        for (j = 0; j < 6; j++) {
+            int str_idx = i - 5 + j;
+            
+            if (str_idx >= 0 && str_idx < len) {
+                buffer[5 - j] = get_char_index(str[str_idx]);
+            } else {
+                buffer[5 - j] = 36; 
+            }
+        }
+        
+        show_buffer(buffer);
+        
+        __delay_cycles(200000); 
+    }
+    
+    update_LCD(); 
 }
 
-void UART_print_string(char* str) {
-    int i;
-    for (i = 0; str[i] != '\0'; i++) {
-        UART_print_char(str[i]);
+
+void config_reloj_8MHz(void) {
+    CSCTL0_H = CSKEY >> 8;                    
+    CSCTL1 = DCOFSEL_3 | DCORSEL;             
+    CSCTL2 = SELA_2 | SELS__DCOCLK | SELM__DCOCLK; 
+    CSCTL3 = DIVA__1 | DIVS__1 | DIVM__1;     
+    CSCTL0_H = 0;                             
+}
+
+void config_UART_9600(void) {
+    // 1. VOLVEMOS A LOS PINES CORRECTOS DE LA LAUNCHPAD (P3.4 y P3.5)
+    P3SEL0 |= (BIT4 | BIT5);
+    P3SEL1 &= ~(BIT4 | BIT5);
+
+    // 2. CONFIGURAMOS EL MÓDULO UCA1
+    UCA1CTLW0 = UCSWRST;                      
+    UCA1CTLW0 |= UCSSEL__SMCLK;               // Reloj a 8MHz
+    
+    // Configuración matemática para 9600 baudios
+    UCA1BR0 = 52;                             
+    UCA1BR1 = 0x00;                           
+    UCA1MCTLW = UCOS16 | UCBRF_1 | 0x4900;    
+
+    UCA1CTLW0 &= ~UCSWRST;
+    UCA1IE &= ~(UCRXIE | UCTXIE);             // Interrupciones apagadas
+}
+
+void uart_print(char *str) {
+    while (*str) {
+        while ((UCA1IFG & UCTXIFG) == 0); 
+        UCA1TXBUF = *str++;
     }
 }
+
 
 char* console_instructions() {
     static char instructions[INSTRUCTIONS_SIZE];
     
-    strcpy(instructions, "--- DICCIONARIO MORSE ---\r\n");
+    strcpy(instructions, "\r\n--- DICCIONARIO MORSE ---\r\n");
     
     unsigned int i;
-    /*
-    for (i = 0; i < CHAR_COUNT; i++) {
-        char morseStr[11];
-        morseStr[10] = '\0';
-        morseStr[0] = toChar[i];
-        morseStr[1] = ':';
-        morseStr[2] = ' ';
-        morseStr[3] = '\0';
 
-        strcat(morseStr, morse[i]);
-        while (strlen(morseStr) < 10) strcat(morseStr, " ");
-
-        strcat(instructions, morseStr);
-        if (i % 5 == 4 || toChar[i] == 'Z') strcat(instructions, "\r\n");
-    }
-    if (CHAR_COUNT % 5 != 0) {
-        strcat(instructions, "\r\n");
-    }
-    */
     for (i = 0; i < LETTER_COUNT; i++) {
-        char morseStr[11];
+        char morseStr[12];
         morseStr[10] = '\0';
         morseStr[0] = letterToChar[i];
         morseStr[1] = ':';
@@ -736,14 +571,14 @@ char* console_instructions() {
         while (strlen(morseStr) < 10) strcat(morseStr, " ");
 
         strcat(instructions, morseStr);
-        if (i % 5 == 4 || toChar[i] == 'Z') strcat(instructions, "\r\n");
+        if (i % 5 == 4 || letterToChar[i] == 'Z') strcat(instructions, "\r\n");
     }
     if (LETTER_COUNT % 5 != 0) {
         strcat(instructions, "\r\n");
     }
     
     for (i = 0; i < DIGIT_COUNT; i++) {
-        char morseStr[11];
+        char morseStr[12];
         morseStr[10] = '\0';
         morseStr[0] = digitToChar[i];
         morseStr[1] = ':';
@@ -754,7 +589,7 @@ char* console_instructions() {
         while (strlen(morseStr) < 10) strcat(morseStr, " ");
 
         strcat(instructions, morseStr);
-        if (i % 5 == 4 || toChar[i] == 'Z') strcat(instructions, "\r\n");
+        if (i % 5 == 4 || digitToChar[i] == '9') strcat(instructions, "\r\n");
     }
     if (DIGIT_COUNT % 5 != 0) {
         strcat(instructions, "\r\n");
