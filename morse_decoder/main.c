@@ -155,13 +155,12 @@ const char alphabetBig[39][2] =
 void init_button_config(void);
 void init_LCD();
 void init_leds();
-void config_ACLK_to_32KHz_crystal();
 void init_timer0(void);
 void init_timer1(int limit);
 
 int add_letter(void);
 void add_char(char** str, char c);
-void delete_char(char** str);
+void delete_last_char(char** str);
 void append_char(char** str, char c);
 void clean_string(char** str);
 
@@ -181,7 +180,7 @@ char* console_instructions();
 char* curr_string = NULL;
 char* curr_morse = NULL;
 
-volatile int state = 0; //0 -> Waiting to start | 1-> Waiting for letter | 2 -> Mid letter
+volatile int state = 0; //0 -> Espera a empezar | 1-> Espera a inicio de letra | 2 -> En medio de una letra - espera a . o -
 
 int main(void) {
     WDTCTL = WDTPW | WDTHOLD;
@@ -194,7 +193,6 @@ int main(void) {
 
     init_LCD();
     init_leds();
-    //config_ACLK_to_32KHz_crystal();
 
     show_buffer(buffer);
 
@@ -207,36 +205,41 @@ int main(void) {
 
     uart_print(console_instructions());
 
-    __bis_SR_register(LPM0_bits |GIE);
+    __bis_SR_register(LPM0_bits | GIE);
     while (1) {}
 }
 
-#pragma vector=TIMER1_A0_VECTOR
+#pragma vector=TIMER1_A0_VECTOR     //Temporizador letra/espacio
 __interrupt void TIMER1_A0_ISR(void) {
     switch (state) {
         case 1: // No hay letra en un rato asi que se añade un espacio
             add_char((char**)&curr_string, ' ');
             TA1CTL &= ~MC_3;
+            state = 0;
             break;
         case 2: // No hay input(. o -) en un rato asi que la letra ha terminado
             if (add_letter() == 1) {
+                P1OUT &= ~BIT0; //Apagamos bit rojo
                 init_timer1(SPACE_ADD_TIME);
                 state = 1;
             }
-            else state = 0;
-            
+            else {
+                P1OUT |= BIT0; //Encendemos bit rojo
+                TA1CTL &= ~MC_3;
+                state = 0;
+            }
             break;
     }
 }
 
 
-#pragma vector=PORT1_VECTOR
+#pragma vector=PORT1_VECTOR     // Botones
 __interrupt void ISR_Puerto1(void) {
     
     if (P1IFG & BIT1) { //Boton 1 -> letra
         if (P1IES & BIT1) { // Boton pulsado
             state = 2;
-            P1IES &= ~BIT1; // Cambiar a flanco de subida(interrupcion al soltar el boton)
+            P1IES &= ~BIT1; // Cambiar a flanco de subida
             TA1CTL &= ~MC_3;
             init_timer0();
         }
@@ -267,7 +270,7 @@ __interrupt void ISR_Puerto1(void) {
             unsigned int time = TB0R;
 
             if (time < SCROLL_TEXT_TIME) { // Borrar letra
-                delete_char((char**)&curr_string);
+                delete_last_char((char**)&curr_string);
                 state = 0;
                 TA1CTL &= ~MC_3;
             } else {// Scroll del texto
@@ -287,11 +290,11 @@ void init_button_config() {
     P1REN |= (BIT1 | BIT2);
     P1OUT |= (BIT1 | BIT2); 
     
-    P1IES |= (BIT1 | BIT2); // 1. Configuras el flanco (esto genera el flag fantasma)
+    P1IES |= (BIT1 | BIT2);
     
-    P1IFG &= ~(BIT1 | BIT2); // 2. LIMPIAS el flag (apagas el timbre antes de empezar)
+    P1IFG &= ~(BIT1 | BIT2);
     
-    P1IE |= (BIT1 | BIT2);   // 3. Habilitamos la interrupción
+    P1IE |= (BIT1 | BIT2);
 }
 
 void init_LCD() {
@@ -338,17 +341,6 @@ void init_leds() {
     P9OUT &= ~BIT7;
 }
 
-void config_ACLK_to_32KHz_crystal() {
-   PJSEL1 &= ~BIT4;
-   PJSEL0 |= BIT4;
-   CSCTL0 = CSKEY;
-   do {
-       CSCTL5 &= ~LFXTOFFG;
-       SFRIFG1 &= ~OFIFG;
-   } while ((CSCTL5 & LFXTOFFG) != 0);
-   CSCTL0_H = 0;
-}
-
 void init_timer0() {
     TA0CTL = TASSEL__ACLK | TACLR;
     TA0CTL |= MC__CONTINUOUS;
@@ -381,26 +373,18 @@ int add_letter() {
         }
     }
 
-    if (letter == '\0') {
-        P1OUT |= BIT0;
-        clean_string((char**)&curr_morse);
-        update_LCD();
-        return 0;
-    }
-    else {
-        P1OUT &= ~BIT0;
-        clean_string((char**)&curr_morse);
-        update_LCD();
-        return 1;
-    }
+    clean_string((char**)&curr_morse);
+    update_LCD();
     
+
+    return letter != '\0';
 }
 
 void add_char(char** str, char c) {
     append_char(str, c);
 }
 
-void delete_char(char** str) {
+void delete_last_char(char** str) {
     if (*str != NULL) {
         unsigned int len = strlen(*str);
         
@@ -527,21 +511,18 @@ void config_reloj_8MHz(void) {
 }
 
 void config_UART_9600(void) {
-    // 1. VOLVEMOS A LOS PINES CORRECTOS DE LA LAUNCHPAD (P3.4 y P3.5)
-    P3SEL0 |= (BIT4 | BIT5);
-    P3SEL1 &= ~(BIT4 | BIT5);
+    P3SEL0 |= (BIT4 | BIT5);                  
+    P3SEL1 &= ~(BIT4 | BIT5);                 
 
-    // 2. CONFIGURAMOS EL MÓDULO UCA1
     UCA1CTLW0 = UCSWRST;                      
-    UCA1CTLW0 |= UCSSEL__SMCLK;               // Reloj a 8MHz
+    UCA1CTLW0 |= UCSSEL__SMCLK;               
     
-    // Configuración matemática para 9600 baudios
     UCA1BR0 = 52;                             
     UCA1BR1 = 0x00;                           
-    UCA1MCTLW = UCOS16 | UCBRF_1 | 0x4900;    
+    UCA1MCTLW |= UCOS16 | UCBRF_1 | 0x4900;   
 
     UCA1CTLW0 &= ~UCSWRST;
-    UCA1IE &= ~(UCRXIE | UCTXIE);             // Interrupciones apagadas
+    UCA1IE &= ~(UCRXIE | UCTXIE);
 }
 
 void uart_print(char *str) {
@@ -560,7 +541,7 @@ char* console_instructions() {
     unsigned int i;
 
     for (i = 0; i < LETTER_COUNT; i++) {
-        char morseStr[12];
+        char morseStr[11];
         morseStr[10] = '\0';
         morseStr[0] = letterToChar[i];
         morseStr[1] = ':';
