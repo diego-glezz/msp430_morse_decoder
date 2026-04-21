@@ -264,7 +264,7 @@ __interrupt void ISR_Puerto1(void) {
         }
         else { // Boton 2 soltado
             TB0CTL &= ~MC_3;
-            int time = TA0R;
+            unsigned int time = TB0R;
 
             if (time < SCROLL_TEXT_TIME) { // Borrar letra
                 delete_char((char**)&curr_string);
@@ -511,7 +511,7 @@ void scroll_text(char* str) {
         
         show_buffer(buffer);
         
-        __delay_cycles(200000); 
+        __delay_cycles(2000000); 
     }
     
     update_LCD(); 
